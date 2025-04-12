@@ -11,15 +11,10 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 }
 
-type HitCounter interface {
-	middlewareMetricInt(next http.Handler) http.Handler
-	getHits() int32
-	resetHits()
-}
-
 func (cfg *apiConfig) middlewareMetricInt(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cfg.fileserverHits.Add(1)
+		fmt.Println("app hit!")
 		next.ServeHTTP(w, r)
 	})
 }
@@ -45,24 +40,32 @@ func main() {
 	fileServerHandler := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
 
 	// handlers
-	mux.Handle("/app/", apiConfig.middlewareMetricInt(fileServerHandler))
-	mux.HandleFunc("GET /metrics", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	mux.Handle("GET /app/", apiConfig.middlewareMetricInt(fileServerHandler))
+	mux.HandleFunc("GET /admin/metrics", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		w.WriteHeader(http.StatusOK)
 		numberOfHits := apiConfig.getHits()
 
-		_, err := w.Write(fmt.Appendf(nil, "Hits: %d", numberOfHits))
+		_, err := w.Write(fmt.Appendf(nil, `
+		<html>
+		  <body>
+			    <h1>Welcome, Chirpy Admin</h1>
+					    <p>Chirpy has been visited %d times!</p>
+			</body>
+		</html>
+		`, numberOfHits))
+
 		if err != nil {
 			log.Fatal("error writing response body")
 		}
 	})
-	mux.HandleFunc("POST /reset", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("POST /admin/reset", func(w http.ResponseWriter, r *http.Request) {
 		apiConfig.resetHits()
 		w.WriteHeader(http.StatusOK)
 	})
 
 	// health check
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 		w.WriteHeader(http.StatusOK)
 		_, err := w.Write([]byte("OK"))
