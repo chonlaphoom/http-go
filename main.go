@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"sync/atomic"
 )
 
@@ -69,10 +70,6 @@ func main() {
 			Body string `json:"body"`
 		}
 
-		type validRes struct {
-			Valid bool `json:"valid"`
-		}
-
 		decoder := json.NewDecoder(r.Body)
 		params := parameters{}
 		decode_error := decoder.Decode(&params)
@@ -91,7 +88,12 @@ func main() {
 		}
 
 		// handle success
-		respondWithJSON(w, http.StatusOK, &validRes{Valid: true})
+		cleanInput := stringReplaceAll(params.Body, []string{"kerfuffle", "sharbert", "fornax"})
+		type cleanRespond struct {
+			Cleaned_body string `json:"cleaned_body"`
+		}
+		fmt.Print(cleanInput)
+		respondWithJSON(w, http.StatusOK, cleanRespond{Cleaned_body: cleanInput})
 	})
 
 	// health check
@@ -124,6 +126,7 @@ func jsonToByte[T any](js T) ([]byte, error) {
 func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
+	fmt.Print(payload)
 
 	body, errJsonToByte := jsonToByte(payload)
 	if errJsonToByte != nil {
@@ -141,4 +144,27 @@ func responseWithError(w http.ResponseWriter, code int, msg string) {
 		Error string `json:"error"`
 	}
 	respondWithJSON(w, code, &errorRes{Error: msg})
+}
+
+// TODO write test
+func stringReplaceAll(target string, profaneList []string) string {
+	splitBy := " "
+	lower := strings.ToLower(target)
+	lower_splitted := strings.Split(lower, splitBy)
+	target_splitted := strings.Split(target, splitBy)
+
+	var indexToReplace []int
+	for _, profane := range profaneList {
+		for index, eachSplitted := range lower_splitted {
+			if eachSplitted == profane {
+				indexToReplace = append(indexToReplace, index)
+			}
+		}
+	}
+
+	for _, index := range indexToReplace {
+		target_splitted[index] = "****"
+	}
+
+	return strings.Join(target_splitted, " ")
 }
