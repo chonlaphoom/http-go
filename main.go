@@ -92,7 +92,6 @@ func main() {
 		type cleanRespond struct {
 			Cleaned_body string `json:"cleaned_body"`
 		}
-		fmt.Print(cleanInput)
 		respondWithJSON(w, http.StatusOK, cleanRespond{Cleaned_body: cleanInput})
 	})
 
@@ -126,7 +125,6 @@ func jsonToByte[T any](js T) ([]byte, error) {
 func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
-	fmt.Print(payload)
 
 	body, errJsonToByte := jsonToByte(payload)
 	if errJsonToByte != nil {
