@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -63,6 +64,35 @@ func main() {
 		apiConfig.resetHits()
 		w.WriteHeader(http.StatusOK)
 	})
+	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
+		type parameters struct {
+			Body string `json:"body"`
+		}
+
+		type validRes struct {
+			Valid bool `json:"valid"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		params := parameters{}
+		decode_error := decoder.Decode(&params)
+
+		// handle other error
+		if decode_error != nil {
+			responseWithError(w, http.StatusInternalServerError, "Something went wrong")
+			return
+		}
+
+		// handle error body exceed 140 chars
+		maxBodySize := 140
+		if len(params.Body) > maxBodySize {
+			responseWithError(w, http.StatusBadRequest, "Chirp is too long")
+			return
+		}
+
+		// handle success
+		respondWithJSON(w, http.StatusOK, &validRes{Valid: true})
+	})
 
 	// health check
 	mux.HandleFunc("GET /api/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -81,4 +111,34 @@ func main() {
 
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(server.ListenAndServe())
+}
+
+func jsonToByte[T any](js T) ([]byte, error) {
+	data, err := json.Marshal(js)
+	if err != nil {
+		log.Printf("error marShalling json %s", err)
+	}
+	return data, err
+}
+
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+
+	body, errJsonToByte := jsonToByte(payload)
+	if errJsonToByte != nil {
+		log.Fatal("error encoding payload response")
+	}
+
+	_, err := w.Write(body)
+	if err != nil {
+		log.Fatal("error writing response body")
+	}
+}
+
+func responseWithError(w http.ResponseWriter, code int, msg string) {
+	type errorRes struct {
+		Error string `json:"error"`
+	}
+	respondWithJSON(w, code, &errorRes{Error: msg})
 }
