@@ -9,15 +9,24 @@ import (
 	"os"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/chonlaphoom/http-go/internal/database"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
 type apiConfig struct {
 	fileserverHits atomic.Int32
-	queries        database.Queries
+	db             database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricInt(next http.Handler) http.Handler {
@@ -50,13 +59,60 @@ func main() {
 
 	apiConfig := &apiConfig{
 		fileserverHits: atomic.Int32{},
-		queries:        *database.New(db),
+		db:             *database.New(db),
 	}
 
 	mux := http.NewServeMux()
 	fileServerHandler := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
 
 	// handlers
+	mux.HandleFunc("POST /api/users", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		type paramsT struct {
+			Email string `json:"email"`
+		}
+
+		decoder := json.NewDecoder(r.Body)
+		params := paramsT{}
+		decode_error := decoder.Decode(&params)
+
+		// handle decode error
+		if decode_error != nil {
+			responseWithError(w, http.StatusInternalServerError, "Something went wrong during decode request body")
+			return
+		}
+		fmt.Println("email", params.Email)
+		_user, err := apiConfig.db.CreateUser(r.Context(), sql.NullString{Valid: params.Email != "", String: params.Email})
+		if err != nil {
+			fmt.Println("error creating user")
+			fmt.Println(err)
+		}
+
+		user := &User{
+			ID:        _user.ID,
+			UpdatedAt: _user.UpdatedAt.Time,
+			CreatedAt: _user.CreatedAt.Time,
+			Email:     _user.Email.String,
+		}
+
+		respondWithJSON(w, http.StatusCreated, user)
+	})
+	mux.HandleFunc("POST /admin/reset", func(w http.ResponseWriter, r *http.Request) {
+		platform := os.Getenv("PLATFORM")
+		if platform != "dev" {
+			w.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		w.Header().Set("Content-Type", "text/plain")
+
+		err := apiConfig.db.ResetUsers(r.Context())
+		if err != nil {
+			fmt.Println("error during reset users table")
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 	mux.Handle("GET /app/", apiConfig.middlewareMetricInt(fileServerHandler))
 	mux.HandleFunc("GET /admin/metrics", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
@@ -75,10 +131,6 @@ func main() {
 		if err != nil {
 			log.Fatal("error writing response body")
 		}
-	})
-	mux.HandleFunc("POST /admin/reset", func(w http.ResponseWriter, r *http.Request) {
-		apiConfig.resetHits()
-		w.WriteHeader(http.StatusOK)
 	})
 	mux.HandleFunc("POST /api/validate_chirp", func(w http.ResponseWriter, r *http.Request) {
 		type parameters struct {
