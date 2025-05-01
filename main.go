@@ -114,7 +114,7 @@ func main() {
 	log.Fatal(server.ListenAndServe())
 }
 
-func jsonToByte[T any](js T) ([]byte, error) {
+func jsonToByteWithMarshal[T any](js T) ([]byte, error) {
 	data, err := json.Marshal(js)
 	if err != nil {
 		log.Printf("error marShalling json %s", err)
@@ -126,7 +126,7 @@ func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
-	body, errJsonToByte := jsonToByte(payload)
+	body, errJsonToByte := jsonToByteWithMarshal(payload)
 	if errJsonToByte != nil {
 		log.Fatal("error encoding payload response")
 	}
@@ -141,7 +141,7 @@ func responseWithError(w http.ResponseWriter, code int, msg string) {
 	type errorRes struct {
 		Error string `json:"error"`
 	}
-	respondWithJSON(w, code, &errorRes{Error: msg})
+	respondWithJSON(w, code, errorRes{Error: msg})
 }
 
 // TODO write test
