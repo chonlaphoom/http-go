@@ -1,16 +1,23 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync/atomic"
+
+	"github.com/chonlaphoom/http-go/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	queries        database.Queries
 }
 
 func (cfg *apiConfig) middlewareMetricInt(next http.Handler) http.Handler {
@@ -30,15 +37,23 @@ func (cfg *apiConfig) resetHits() {
 }
 
 func main() {
-	port := "8080"
-	address := ":" + port
+	// load env
+	err_load_env := godotenv.Load()
+	if err_load_env != nil {
+		log.Fatal("error load env")
+	}
+	dbURL := os.Getenv("DB_URL")
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatal("error open postgres dbUTRL:", dbURL)
+	}
 
-	fmt.Println("starting server...")
-
-	mux := http.NewServeMux()
 	apiConfig := &apiConfig{
 		fileserverHits: atomic.Int32{},
+		queries:        *database.New(db),
 	}
+
+	mux := http.NewServeMux()
 	fileServerHandler := http.StripPrefix("/app/", http.FileServer(http.Dir(".")))
 
 	// handlers
@@ -105,10 +120,15 @@ func main() {
 		}
 	})
 
+	port := "8080"
+	address := ":" + port
+
 	server := &http.Server{
 		Addr:    address,
 		Handler: mux,
 	}
+
+	fmt.Println("starting server...")
 
 	log.Printf("Serving on port: %s\n", port)
 	log.Fatal(server.ListenAndServe())
