@@ -1,11 +1,12 @@
 package main
 
-import "log"
 import (
+	"encoding/json"
+	"log"
 	"net/http"
 )
 
-func RespondWithJSON(w http.ResponseWriter, code int, payload any) {
+func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
@@ -20,9 +21,17 @@ func RespondWithJSON(w http.ResponseWriter, code int, payload any) {
 	}
 }
 
-func ResponseWithError(w http.ResponseWriter, code int, msg string) {
+func responseWithError(w http.ResponseWriter, code int, msg string) {
 	type errorRes struct {
 		Error string `json:"error"`
 	}
-	RespondWithJSON(w, code, errorRes{Error: msg})
+	respondWithJSON(w, code, errorRes{Error: msg})
+}
+
+func jsonToByteWithMarshal[T any](js T) ([]byte, error) {
+	data, err := json.Marshal(js)
+	if err != nil {
+		log.Printf("error marShalling json %s", err)
+	}
+	return data, err
 }
