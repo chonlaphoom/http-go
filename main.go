@@ -78,7 +78,7 @@ func main() {
 
 		// handle decode error
 		if decode_error != nil {
-			responseWithError(w, http.StatusInternalServerError, "Something went wrong during decode request body")
+			ResponseWithError(w, http.StatusInternalServerError, "Something went wrong during decode request body")
 			return
 		}
 		fmt.Println("email", params.Email)
@@ -95,7 +95,7 @@ func main() {
 			Email:     _user.Email.String,
 		}
 
-		respondWithJSON(w, http.StatusCreated, user)
+		RespondWithJSON(w, http.StatusCreated, user)
 	})
 	mux.HandleFunc("POST /admin/reset", func(w http.ResponseWriter, r *http.Request) {
 		platform := os.Getenv("PLATFORM")
@@ -143,14 +143,14 @@ func main() {
 
 		// handle other error
 		if decode_error != nil {
-			responseWithError(w, http.StatusInternalServerError, "Something went wrong")
+			ResponseWithError(w, http.StatusInternalServerError, "Something went wrong")
 			return
 		}
 
 		// handle error body exceed 140 chars
 		maxBodySize := 140
 		if len(params.Body) > maxBodySize {
-			responseWithError(w, http.StatusBadRequest, "Chirp is too long")
+			ResponseWithError(w, http.StatusBadRequest, "Chirp is too long")
 			return
 		}
 
@@ -159,7 +159,7 @@ func main() {
 		type cleanRespond struct {
 			Cleaned_body string `json:"cleaned_body"`
 		}
-		respondWithJSON(w, http.StatusOK, cleanRespond{Cleaned_body: cleanInput})
+		RespondWithJSON(w, http.StatusOK, cleanRespond{Cleaned_body: cleanInput})
 	})
 
 	// health check
@@ -192,28 +192,6 @@ func jsonToByteWithMarshal[T any](js T) ([]byte, error) {
 		log.Printf("error marShalling json %s", err)
 	}
 	return data, err
-}
-
-func respondWithJSON(w http.ResponseWriter, code int, payload any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-
-	body, errJsonToByte := jsonToByteWithMarshal(payload)
-	if errJsonToByte != nil {
-		log.Fatal("error encoding payload response")
-	}
-
-	_, err := w.Write(body)
-	if err != nil {
-		log.Fatal("error writing response body")
-	}
-}
-
-func responseWithError(w http.ResponseWriter, code int, msg string) {
-	type errorRes struct {
-		Error string `json:"error"`
-	}
-	respondWithJSON(w, code, errorRes{Error: msg})
 }
 
 // TODO write test
