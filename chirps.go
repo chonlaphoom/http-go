@@ -22,7 +22,7 @@ type Chirp struct {
 	User_id   uuid.UUID `json:"user_id"`
 }
 
-func (cfg *ApiConfig) chirps(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	bodyParams := chirpParam{}
 	decode_error := decoder.Decode(&bodyParams)
@@ -57,4 +57,25 @@ func (cfg *ApiConfig) chirps(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt: newChirp.UpdatedAt.Time,
 		Id:        newChirp.ID,
 	})
+}
+
+func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
+	_chirps, err := cfg.Db.GetChirps(r.Context())
+
+	if err != nil {
+		responseWithError(w, http.StatusInternalServerError, "something went wrong getting chirps")
+		return
+	}
+
+	chirps := []Chirp{}
+	for _, chirp := range _chirps {
+		chirps = append(chirps, Chirp{Body: chirp.Body,
+			User_id:   chirp.UserID,
+			CreatedAt: chirp.CreatedAt.Time,
+			UpdatedAt: chirp.UpdatedAt.Time,
+			Id:        chirp.ID,
+		})
+	}
+
+	respondWithJSON(w, http.StatusOK, chirps)
 }
