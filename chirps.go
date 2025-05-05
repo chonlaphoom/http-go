@@ -60,6 +60,8 @@ func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
+	chirpId := r.PathValue("chirpID")
+
 	_chirps, err := cfg.Db.GetChirps(r.Context())
 
 	if err != nil {
@@ -77,5 +79,23 @@ func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	respondWithJSON(w, http.StatusOK, chirps)
+	if chirpId != "" {
+		found := Chirp{}
+		isFound := false
+		for _, v := range chirps {
+			if string(v.Id.String()) == chirpId {
+				isFound = true
+				found = v
+				break
+			}
+		}
+		if isFound {
+			respondWithJSON(w, http.StatusOK, found)
+			return
+		}
+		responseWithError(w, http.StatusNotFound, "not found")
+	} else {
+		// get all chirps
+		respondWithJSON(w, http.StatusOK, chirps)
+	}
 }
