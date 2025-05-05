@@ -9,7 +9,6 @@ import (
 )
 
 func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	type paramsT struct {
 		Email string `json:"email"`
 	}
