@@ -6,11 +6,15 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+
+	"github.com/chonlaphoom/http-go/internal/auth"
+	"github.com/chonlaphoom/http-go/internal/database"
 )
 
-func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
+func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 	type paramsT struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 
 	decoder := json.NewDecoder(r.Body)
@@ -22,8 +26,56 @@ func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 		responseWithError(w, http.StatusInternalServerError, "Something went wrong during decode request body")
 		return
 	}
-	fmt.Println("email", params.Email)
-	_user, err := cfg.Db.CreateUser(r.Context(), sql.NullString{Valid: params.Email != "", String: params.Email})
+
+	dbUser, err := cfg.Db.GetUserByEmail(r.Context(), sql.NullString{Valid: params.Email != "", String: params.Email})
+
+	if err != nil {
+		responseWithError(w, http.StatusUnauthorized, "Something went wrong getting user")
+		return
+	}
+
+	if err := auth.CheckPasswordHash(dbUser.HashedPassword, params.Password); err != nil {
+		responseWithError(w, http.StatusUnauthorized, "Incorrect password")
+		return
+	}
+
+	user := User{
+		ID:        dbUser.ID,
+		UpdatedAt: dbUser.UpdatedAt.Time,
+		CreatedAt: dbUser.CreatedAt.Time,
+		Email:     dbUser.Email.String,
+	}
+	respondWithJSON(w, http.StatusOK, user)
+}
+
+func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
+	type paramsT struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	params := paramsT{}
+	decode_error := decoder.Decode(&params)
+
+	// handle decode error
+	if decode_error != nil {
+		responseWithError(w, http.StatusInternalServerError, "Something went wrong during decode request body")
+		return
+	}
+
+	pass, err := auth.HashPassword(params.Password)
+	if err != nil {
+		responseWithError(w, http.StatusInternalServerError, "Something went wrong hashing password")
+		return
+	}
+
+	createUserParams := database.CreateUserParams{
+		Email:          sql.NullString{Valid: params.Email != "", String: params.Email},
+		HashedPassword: pass,
+	}
+	_user, err := cfg.Db.CreateUser(r.Context(), createUserParams)
+
 	if err != nil {
 		fmt.Println("error creating user")
 		fmt.Println(err)
