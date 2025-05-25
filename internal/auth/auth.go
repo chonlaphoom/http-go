@@ -6,8 +6,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/pingcap/log"
-	"github.com/ydb-platform/ydb-go-sdk/v3/log"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -21,32 +19,37 @@ func CheckPasswordHash(hash, password string) error {
 	return error
 }
 
-type CustomClaims struct {
-	Claims jwt.Claims
-}
-
-func (cc *CustomClaims) MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
-	cc.Claims = jwt.RegisteredClaims{
+func MakeJWT(userID uuid.UUID, tokenSecret string, expiresIn time.Duration) (string, error) {
+	claims := jwt.RegisteredClaims{
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiresIn)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 		Issuer:    "chripy",
 		Subject:   userID.String(),
 	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, cc.Claims)
-	return token.SignedString(tokenSecret)
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(tokenSecret))
 }
 
-func (cc *CustomClaims) ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
-	token, err := jwt.ParseWithClaims(tokenString, cc.Claims, func(token *jwt.Token) (interface{}, error) {
+func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (any, error) {
 		// Validate the signing method
-		if token.Method.Alg() == "HS256" {
+		if token.Method.Alg() != "HS256" {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
+
+		// check if token has expired
+		expiredTime, _ := token.Claims.GetExpirationTime()
+		if time.Now().After(expiredTime.Local()) {
+			return nil, fmt.Errorf("token has expired %v", expiredTime)
+		}
+
+		fmt.Println("token is valid and expired at: ", expiredTime.Local())
 		return []byte(tokenSecret), nil
 	})
 
 	if err != nil {
 		fmt.Println(err)
+		return uuid.Nil, err
 	}
 
 	id, err_claims := token.Claims.GetSubject()
