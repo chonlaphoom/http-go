@@ -7,12 +7,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
-func loadEnvironment() string {
+// TODO return array instead
+func loadEnvironment() (string, string) {
 	err_load_env := godotenv.Load()
 	if err_load_env != nil {
 		log.Fatal("error load env")
 	}
 	dbURL := os.Getenv("DB_URL")
 
-	return dbURL
+	return dbURL, os.Getenv("TOKEN_STRING")
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 )
 
+// TODO: refactor
 func TestComparePassword(t *testing.T) {
 	toHash := "mysecretPass"
 	hash, _ := HashPassword(toHash)
@@ -32,6 +33,7 @@ func TestValidateJWT(t *testing.T) {
 	}
 	t.Logf("Token is valid: %v\n", ok)
 }
+
 func TestExpiredJWT(t *testing.T) {
 	var secretToken = "abc"
 	_uuid, _ := uuid.NewRandom()
@@ -48,4 +50,12 @@ func TestExpiredJWT(t *testing.T) {
 		return
 	}
 	t.Error("expect token to expired")
+}
+
+func TestGetBearerToken(t *testing.T) {
+	header := map[string][]string{"Authorization": {"Bearer 123"}}
+	token, err := GetBearerToken(header)
+	if err != nil || token != "123" {
+		t.Error("expect getting bearer 123")
+	}
 }

@@ -2,16 +2,17 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/chonlaphoom/http-go/internal/auth"
 	"github.com/chonlaphoom/http-go/internal/database"
 	"github.com/google/uuid"
 )
 
 type chirpParam struct {
-	Body    string    `json:"body"`
-	User_id uuid.UUID `json:"user_id"`
+	Body string `json:"body"`
 }
 
 type Chirp struct {
@@ -33,6 +34,20 @@ func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// unauthorized
+	bearer, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		fmt.Print(bearer)
+		responseWithError(w, http.StatusUnauthorized, "can not get bearer token")
+		return
+	}
+
+	userId, errValidate := auth.ValidateJWT(bearer, cfg.tokenString)
+	if errValidate != nil {
+		responseWithError(w, http.StatusUnauthorized, "token is notvalid")
+		return
+	}
+
 	// handle error body exceed 140 chars
 	maxBodySize := 140
 	if len(bodyParams.Body) > maxBodySize {
@@ -43,7 +58,7 @@ func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 	// handle success
 	cleanBody := stringReplaceAll(bodyParams.Body, []string{"kerfuffle", "sharbert", "fornax"})
 
-	newChirp, error_create_chirp := cfg.Db.CreateChirp(r.Context(), database.CreateChirpParams{Body: cleanBody, UserID: bodyParams.User_id})
+	newChirp, error_create_chirp := cfg.Db.CreateChirp(r.Context(), database.CreateChirpParams{Body: cleanBody, UserID: userId})
 
 	if error_create_chirp != nil {
 		responseWithError(w, http.StatusBadRequest, "Can not create chirp, something went wrong!")

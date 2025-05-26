@@ -21,15 +21,24 @@ type User struct {
 	Email     string    `json:"email"`
 }
 
+type UserWToken struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+	Token     string    `json:"token"`
+}
+
 type ApiConfig struct {
 	FileserverHits atomic.Int32
 	Db             database.Queries
+	tokenString    string
 }
 
 func main() {
 	// load env
-	dbURL := loadEnvironment()
-	db, err := sql.Open("postgres", loadEnvironment())
+	dbURL, tokenStr := loadEnvironment()
+	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("error open postgres dbUTRL:", dbURL)
 	}
@@ -37,6 +46,7 @@ func main() {
 	apiConfig := &ApiConfig{
 		FileserverHits: atomic.Int32{},
 		Db:             *database.New(db),
+		tokenString:    tokenStr,
 	}
 
 	mux := http.NewServeMux()

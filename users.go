@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/chonlaphoom/http-go/internal/auth"
 	"github.com/chonlaphoom/http-go/internal/database"
@@ -39,16 +40,29 @@ func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := User{
+	expires := 60
+	token, errCreateToken := auth.MakeJWT(dbUser.ID, cfg.tokenString, time.Second*time.Duration(expires))
+
+	if errCreateToken != nil {
+		fmt.Println(errCreateToken)
+		responseWithError(w, http.StatusUnauthorized, "something went wrong during create token")
+		return
+	}
+
+	fmt.Println("->", token)
+	user := UserWToken{
 		ID:        dbUser.ID,
 		UpdatedAt: dbUser.UpdatedAt.Time,
 		CreatedAt: dbUser.CreatedAt.Time,
 		Email:     dbUser.Email.String,
+		Token:     token,
 	}
+
 	respondWithJSON(w, http.StatusOK, user)
 }
 
 func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("creating user...")
 	type paramsT struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -60,6 +74,7 @@ func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 
 	// handle decode error
 	if decode_error != nil {
+		fmt.Printf("err: %e", decode_error)
 		responseWithError(w, http.StatusInternalServerError, "Something went wrong during decode request body")
 		return
 	}
