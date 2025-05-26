@@ -1,12 +1,12 @@
-# deps
+### deps
 - goose for database migration
 - postgresql@15
 - sqlc
 
-# auth
+### auth
 - jwt token
 
-# run
+### run
 go build -o \<target\> && ./\<target\>
 
 serve localhost:8080
