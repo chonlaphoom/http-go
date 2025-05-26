@@ -6,7 +6,5 @@
 ### auth
 - jwt token
 
-### run
+### build & run
 go build -o \<target\> && ./\<target\>
-
-serve localhost:8080
