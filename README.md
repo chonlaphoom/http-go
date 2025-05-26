@@ -5,6 +5,7 @@
 
 ### auth
 - jwt token
+- bcrypt
 
 ### build & run
 go build -o \<target\> && ./\<target\>
