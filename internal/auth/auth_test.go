@@ -59,3 +59,12 @@ func TestGetBearerToken(t *testing.T) {
 		t.Error("expect getting bearer 123")
 	}
 }
+
+func TestMakeRefreshTokens(t *testing.T) {
+	_, err := MakeRefreshToken()
+
+	if err != nil {
+		t.Error("expect making refresh token successfully")
+		return
+	}
+}
