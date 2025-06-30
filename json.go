@@ -10,6 +10,10 @@ func respondWithJSON(w http.ResponseWriter, code int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 
+	if payload == nil {
+		return
+	}
+
 	body, errJsonToByte := jsonToByteWithMarshal(payload)
 	if errJsonToByte != nil {
 		log.Fatal("error encoding payload response")

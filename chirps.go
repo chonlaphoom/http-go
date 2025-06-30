@@ -42,9 +42,17 @@ func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// check refresh token
+	userIdFromRefresh, errRToken := cfg.Db.GetUserByRefreshToken(r.Context(), bearer)
 	userId, errValidate := auth.ValidateJWT(bearer, cfg.tokenString)
-	if errValidate != nil {
-		responseWithError(w, http.StatusUnauthorized, "token is notvalid")
+
+	if errRToken == nil {
+		// use userId from refresh token
+		userId = userIdFromRefresh.ID
+	}
+
+	if errValidate != nil && errRToken != nil {
+		responseWithError(w, http.StatusUnauthorized, "token is not valid")
 		return
 	}
 

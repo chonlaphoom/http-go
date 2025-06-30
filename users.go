@@ -55,13 +55,20 @@ func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	t, errInsertRefreshToken := cfg.Db.InsertRefreshToken(r.Context(), database.InsertRefreshTokenParams{UserID: dbUser.ID, Token: refresh_token})
+
+	if errInsertRefreshToken != nil {
+		fmt.Println(errInsertRefreshToken)
+		responseWithError(w, http.StatusUnauthorized, "something went wrong during insert refresh token")
+	}
+
 	user := UserWToken{
 		ID:            dbUser.ID,
 		UpdatedAt:     dbUser.UpdatedAt.Time,
 		CreatedAt:     dbUser.CreatedAt.Time,
 		Email:         dbUser.Email.String,
 		Token:         token,
-		Refresh_token: refresh_token,
+		Refresh_token: t.Token,
 	}
 
 	respondWithJSON(w, http.StatusOK, user)
@@ -138,7 +145,7 @@ func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
 	bearer, err := auth.GetBearerToken(r.Header)
 	if err != nil {
 		fmt.Print(bearer)
-		responseWithError(w, http.StatusUnauthorized, "can not get bearer refresh token")
+		responseWithError(w, http.StatusUnauthorized, "can not get refresh token")
 		return
 	}
 
@@ -148,16 +155,44 @@ func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isExpire := time.Now().After(refToken.ExpiresAt.Time)
-	fmt.Printf("\n isExpire: %v \n", isExpire)
+	fmt.Printf("\n isExpire: %v %v \n", isExpire, refToken.Token)
 	if isExpire {
 		responseWithError(w, http.StatusUnauthorized, "error refresh token expired")
 	}
 
-	w.Header().Set("Content-Type", "text/plain")
-	w.WriteHeader(http.StatusOK)
-	_, error_writing := w.Write([]byte("OK"))
-
-	if error_writing != nil {
-		fmt.Println("error writing response")
+	type res struct {
+		Token string `json:"token"`
 	}
+	response := res{Token: refToken.Token}
+	respondWithJSON(w, http.StatusOK, &response)
+}
+
+func (cfg *ApiConfig) revoke(w http.ResponseWriter, r *http.Request) {
+	bearer, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		fmt.Print(bearer)
+		responseWithError(w, http.StatusUnauthorized, "can not revoke refresh token")
+		return
+	}
+
+	rt, erroGetRT := cfg.Db.GetRefreshTokenByToken(r.Context(), bearer)
+
+	if erroGetRT != nil {
+		responseWithError(w, http.StatusUnauthorized, "can not get refresh token")
+		return
+	}
+	if rt.RevokedAt.Valid {
+		// already revoke
+		responseWithError(w, http.StatusUnauthorized, "already revoked")
+		return
+	}
+
+	erroRevoke := cfg.Db.RevokeExistingRefreshToken(r.Context(), bearer)
+	if erroRevoke != nil {
+		responseWithError(w, http.StatusUnauthorized, "can not get refresh token")
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
+
 }

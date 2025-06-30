@@ -61,7 +61,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email sql.NullString) (Use
 const getUserByRefreshToken = `-- name: GetUserByRefreshToken :one
 SELECT u.id, u.created_at, u.updated_at, u.email, u.hashed_password
 FROM users u
-INNER JOIN refresh_tokens rt ON u.user_id = rt.user_id
+INNER JOIN refresh_tokens rt ON u.id = rt.user_id
 WHERE rt.token = $1
 `
 

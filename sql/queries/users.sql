@@ -16,5 +16,5 @@ WHERE email = $1 LIMIT 1;
 -- name: GetUserByRefreshToken :one
 SELECT u.*
 FROM users u
-INNER JOIN refresh_tokens rt ON u.user_id = rt.user_id
+INNER JOIN refresh_tokens rt ON u.id = rt.user_id
 WHERE rt.token = $1;

@@ -31,7 +31,7 @@ func (q *Queries) GetRefreshTokenByToken(ctx context.Context, token string) (Ref
 }
 
 const insertRefreshToken = `-- name: InsertRefreshToken :one
-INSERT INTO refresh_tokens (token, created_at, updated_at, expired_at, revoked_at, user_id)
+INSERT INTO refresh_tokens (token, created_at, updated_at, expires_at, revoked_at, user_id)
 VALUES (
     $1,
 		NOW(),
@@ -60,4 +60,15 @@ func (q *Queries) InsertRefreshToken(ctx context.Context, arg InsertRefreshToken
 		&i.UserID,
 	)
 	return i, err
+}
+
+const revokeExistingRefreshToken = `-- name: RevokeExistingRefreshToken :exec
+UPDATE refresh_tokens 
+SET revoked_at = NOW(), updated_at = NOW()
+WHERE token = $1
+`
+
+func (q *Queries) RevokeExistingRefreshToken(ctx context.Context, token string) error {
+	_, err := q.db.ExecContext(ctx, revokeExistingRefreshToken, token)
+	return err
 }
