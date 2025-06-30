@@ -40,29 +40,35 @@ func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expires := 60
+	expires := 60 * 60
 	token, errCreateToken := auth.MakeJWT(dbUser.ID, cfg.tokenString, time.Second*time.Duration(expires))
+	refresh_token, errCreateRefreshToken := auth.MakeRefreshToken()
 
 	if errCreateToken != nil {
 		fmt.Println(errCreateToken)
 		responseWithError(w, http.StatusUnauthorized, "something went wrong during create token")
 		return
 	}
+	if errCreateRefreshToken != nil {
+		fmt.Println(errCreateRefreshToken)
+		responseWithError(w, http.StatusUnauthorized, "something went wrong during create refresh token")
+		return
+	}
 
-	fmt.Println("->", token)
 	user := UserWToken{
-		ID:        dbUser.ID,
-		UpdatedAt: dbUser.UpdatedAt.Time,
-		CreatedAt: dbUser.CreatedAt.Time,
-		Email:     dbUser.Email.String,
-		Token:     token,
+		ID:            dbUser.ID,
+		UpdatedAt:     dbUser.UpdatedAt.Time,
+		CreatedAt:     dbUser.CreatedAt.Time,
+		Email:         dbUser.Email.String,
+		Token:         token,
+		Refresh_token: refresh_token,
 	}
 
 	respondWithJSON(w, http.StatusOK, user)
 }
 
 func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("creating user...")
+	fmt.Println("begin create user...")
 	type paramsT struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -121,6 +127,34 @@ func (cfg *ApiConfig) resetUsers(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 
+	_, error_writing := w.Write([]byte("OK"))
+
+	if error_writing != nil {
+		fmt.Println("error writing response")
+	}
+}
+
+func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
+	bearer, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		fmt.Print(bearer)
+		responseWithError(w, http.StatusUnauthorized, "can not get bearer refresh token")
+		return
+	}
+
+	refToken, errGettingRefreshToken := cfg.Db.GetRefreshTokenByToken(r.Context(), bearer)
+	if errGettingRefreshToken != nil {
+		responseWithError(w, http.StatusUnauthorized, "error refresh token not found")
+	}
+
+	isExpire := time.Now().After(refToken.ExpiresAt.Time)
+	fmt.Printf("\n isExpire: %v \n", isExpire)
+	if isExpire {
+		responseWithError(w, http.StatusUnauthorized, "error refresh token expired")
+	}
+
+	w.Header().Set("Content-Type", "text/plain")
+	w.WriteHeader(http.StatusOK)
 	_, error_writing := w.Write([]byte("OK"))
 
 	if error_writing != nil {
