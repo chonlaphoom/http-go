@@ -152,18 +152,31 @@ func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
 	refToken, errGettingRefreshToken := cfg.Db.GetRefreshTokenByToken(r.Context(), bearer)
 	if errGettingRefreshToken != nil {
 		responseWithError(w, http.StatusUnauthorized, "error refresh token not found")
+		return
 	}
 
 	isExpire := time.Now().After(refToken.ExpiresAt.Time)
 	fmt.Printf("\n isExpire: %v %v \n", isExpire, refToken.Token)
 	if isExpire {
 		responseWithError(w, http.StatusUnauthorized, "error refresh token expired")
+		return
+	}
+
+	if refToken.RevokedAt.Valid {
+		responseWithError(w, http.StatusUnauthorized, "error refresh token already revoked")
+		return
+	}
+
+	expires := 60 * 60
+	access_token, errCreateToken := auth.MakeJWT(refToken.UserID, cfg.tokenString, time.Second*time.Duration(expires))
+	if errCreateToken != nil {
+		responseWithError(w, http.StatusUnauthorized, "error create acess refresh token")
 	}
 
 	type res struct {
 		Token string `json:"token"`
 	}
-	response := res{Token: refToken.Token}
+	response := res{Token: access_token}
 	respondWithJSON(w, http.StatusOK, &response)
 }
 
