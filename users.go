@@ -12,14 +12,14 @@ import (
 	"github.com/chonlaphoom/http-go/internal/database"
 )
 
-func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
-	type paramsT struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
+type UserData struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
 
+func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	params := paramsT{}
+	params := UserData{}
 	decode_error := decoder.Decode(&params)
 
 	// handle decode error
@@ -76,13 +76,9 @@ func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("begin create user...")
-	type paramsT struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
-	}
 
 	decoder := json.NewDecoder(r.Body)
-	params := paramsT{}
+	params := UserData{}
 	decode_error := decoder.Decode(&params)
 
 	// handle decode error
@@ -181,6 +177,7 @@ func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *ApiConfig) revoke(w http.ResponseWriter, r *http.Request) {
 	bearer, err := auth.GetBearerToken(r.Header)
+
 	if err != nil {
 		fmt.Print(bearer)
 		responseWithError(w, http.StatusUnauthorized, "can not revoke refresh token")
@@ -207,4 +204,59 @@ func (cfg *ApiConfig) revoke(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, http.StatusNoContent, nil)
 
+}
+
+func (cfg *ApiConfig) updateUser(w http.ResponseWriter, r *http.Request) {
+	bearer, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		fmt.Println(err)
+		responseWithError(w, http.StatusUnauthorized, "can not get access token")
+		return
+	}
+
+	inputParam := UserData{}
+	newDecoder := json.NewDecoder(r.Body)
+	decoderError := newDecoder.Decode(&inputParam)
+	if decoderError != nil {
+		fmt.Println(decoderError)
+		responseWithError(w, http.StatusUnauthorized, "can decode input from client")
+		return
+	}
+
+	userId, errValidate := auth.ValidateJWT(bearer, cfg.tokenString)
+	if errValidate != nil {
+		responseWithError(w, http.StatusUnauthorized, "error validating bearer token")
+		return
+	}
+
+	hashedPass, errorHash := auth.HashPassword(inputParam.Password)
+	if errorHash != nil {
+		responseWithError(w, http.StatusUnauthorized, "error hashing password")
+		return
+	}
+
+	updateData := database.UpdateUserByUserIdParams{
+		Email:          sql.NullString{Valid: true, String: inputParam.Email},
+		HashedPassword: hashedPass,
+		ID:             userId,
+	}
+	user, errorUpdateUser := cfg.Db.UpdateUserByUserId(r.Context(), updateData)
+	if errorUpdateUser != nil {
+		fmt.Println(errorUpdateUser)
+		responseWithError(w, http.StatusUnauthorized, "error updating user database")
+		return
+	}
+
+	type ResponseUser struct {
+		Id        string    `json:"id"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+		Email     string    `json:"email"`
+	}
+	respondWithJSON(w, http.StatusOK, ResponseUser{
+		Id:        userId.String(),
+		Email:     user.Email.String,
+		CreatedAt: user.CreatedAt.Time,
+		UpdatedAt: user.UpdatedAt.Time,
+	})
 }

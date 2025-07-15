@@ -71,6 +71,10 @@ func GetBearerToken(headers http.Header) (string, error) {
 	}
 
 	b := strings.Split(bearer, " ")
+	if cap(b) < 2 {
+		return "", errors.New("can not find bearer token")
+	}
+
 	return b[1], nil
 }
 

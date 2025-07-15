@@ -18,3 +18,9 @@ SELECT u.*
 FROM users u
 INNER JOIN refresh_tokens rt ON u.id = rt.user_id
 WHERE rt.token = $1;
+
+-- name: UpdateUserByUserId :one
+UPDATE users
+SET updated_at = NOW(), email = $1, hashed_password = $2  
+WHERE id = $3
+RETURNING *;
