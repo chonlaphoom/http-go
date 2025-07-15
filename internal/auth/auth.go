@@ -48,7 +48,6 @@ func ValidateJWT(tokenString, tokenSecret string) (uuid.UUID, error) {
 			return nil, fmt.Errorf("token has expired %v", expiredTime)
 		}
 
-		fmt.Println("token is valid and expired at: ", expiredTime.Local())
 		return []byte(tokenSecret), nil
 	})
 

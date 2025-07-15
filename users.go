@@ -156,7 +156,6 @@ func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 
 	isExpire := time.Now().After(refToken.ExpiresAt.Time)
-	fmt.Printf("\n isExpire: %v %v \n", isExpire, refToken.Token)
 	if isExpire {
 		responseWithError(w, http.StatusUnauthorized, "error refresh token expired")
 		return

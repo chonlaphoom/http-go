@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -37,7 +36,6 @@ func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 	// unauthorized
 	bearer, err := auth.GetBearerToken(r.Header)
 	if err != nil {
-		fmt.Print(bearer)
 		responseWithError(w, http.StatusUnauthorized, "can not get bearer token")
 		return
 	}
