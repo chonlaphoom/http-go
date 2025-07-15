@@ -1,5 +1,5 @@
 ### deps
-- goose for database migration
+- goose for migration
 - postgresql@15
 - sqlc
 
