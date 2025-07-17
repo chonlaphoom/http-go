@@ -96,10 +96,10 @@ func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 	if chirpId != "" {
 		found := Chirp{}
 		isFound := false
-		for _, v := range chirps {
-			if string(v.Id.String()) == chirpId {
+		for _, c := range chirps {
+			if string(c.Id.String()) == chirpId {
 				isFound = true
-				found = v
+				found = c
 				break
 			}
 		}
@@ -112,4 +112,42 @@ func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 		// get all chirps
 		respondWithJSON(w, http.StatusOK, chirps)
 	}
+}
+
+func (cfg *ApiConfig) deleteChirp(w http.ResponseWriter, r *http.Request) {
+	token, errorGettingToken := auth.GetBearerToken(r.Header)
+	chirpId := r.PathValue("chirpID")
+
+	if errorGettingToken != nil {
+		responseWithError(w, http.StatusUnauthorized, errorGettingToken.Error())
+		return
+	}
+
+	userId, errorValidateJWT := auth.ValidateJWT(token, cfg.tokenString)
+	if errorValidateJWT != nil {
+		responseWithError(w, http.StatusForbidden, "Error validate JWT")
+		return
+	}
+
+	id, _ := uuid.Parse(chirpId)
+	chirp, errGetChirp := cfg.Db.GetChirpFromId(r.Context(), id)
+
+	if errGetChirp != nil {
+		responseWithError(w, http.StatusForbidden, "can not get chirp")
+		return
+	}
+
+	if userId.String() != chirp.UserID.String() {
+		responseWithError(w, http.StatusForbidden, "not your chirp!")
+		return
+	}
+
+	err := cfg.Db.DeleteChirpsById(r.Context(), id)
+
+	if err != nil {
+		responseWithError(w, http.StatusNotFound, "something went wrong during delete chirp")
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
 }
