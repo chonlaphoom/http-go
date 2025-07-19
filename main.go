@@ -36,11 +36,12 @@ type ApiConfig struct {
 	FileserverHits atomic.Int32
 	Db             database.Queries
 	tokenString    string
+	polkaKey       string
 }
 
 func main() {
 	// load env
-	dbURL, tokenStr := loadEnvironment()
+	dbURL, tokenStr, polkaKey := loadEnvironment()
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		log.Fatal("error open postgres dbUTRL:", dbURL)
@@ -50,6 +51,7 @@ func main() {
 		FileserverHits: atomic.Int32{},
 		Db:             *database.New(db),
 		tokenString:    tokenStr,
+		polkaKey:       polkaKey,
 	}
 
 	mux := http.NewServeMux()

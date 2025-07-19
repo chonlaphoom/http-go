@@ -54,7 +54,7 @@ func TestExpiredJWT(t *testing.T) {
 
 func TestGetBearerToken(t *testing.T) {
 	header := map[string][]string{"Authorization": {"Bearer 123"}}
-	token, err := GetBearerToken(header)
+	token, err := GetAPIKey(header)
 	if err != nil || token != "123" {
 		t.Error("expect getting bearer 123")
 	}

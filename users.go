@@ -140,7 +140,7 @@ func (cfg *ApiConfig) resetUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
-	bearer, err := auth.GetBearerToken(r.Header)
+	bearer, err := auth.GetAPIKey(r.Header)
 	if err != nil {
 		fmt.Print(bearer)
 		responseWithError(w, http.StatusUnauthorized, "can not get refresh token")
@@ -178,7 +178,7 @@ func (cfg *ApiConfig) refresh(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) revoke(w http.ResponseWriter, r *http.Request) {
-	bearer, err := auth.GetBearerToken(r.Header)
+	bearer, err := auth.GetAPIKey(r.Header)
 
 	if err != nil {
 		fmt.Print(bearer)
@@ -209,7 +209,7 @@ func (cfg *ApiConfig) revoke(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) updateUser(w http.ResponseWriter, r *http.Request) {
-	bearer, err := auth.GetBearerToken(r.Header)
+	bearer, err := auth.GetAPIKey(r.Header)
 	if err != nil {
 		fmt.Println(err)
 		responseWithError(w, http.StatusUnauthorized, "can not get access token")
@@ -264,6 +264,14 @@ func (cfg *ApiConfig) updateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) updateChirpRed(w http.ResponseWriter, r *http.Request) {
+	apiKey, errGettingKey := auth.GetAPIKey(r.Header)
+
+	if apiKey != cfg.polkaKey || errGettingKey != nil {
+		fmt.Println("error: getting api keys polka", errGettingKey)
+		respondWithJSON(w, http.StatusUnauthorized, nil)
+		return
+	}
+
 	type updateChirpRed struct {
 		Event string `json:"event"`
 		Data  struct {

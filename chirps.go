@@ -34,7 +34,7 @@ func (cfg *ApiConfig) createChirps(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// unauthorized
-	bearer, err := auth.GetBearerToken(r.Header)
+	bearer, err := auth.GetAPIKey(r.Header)
 	if err != nil {
 		responseWithError(w, http.StatusUnauthorized, "can not get bearer token")
 		return
@@ -115,7 +115,7 @@ func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 }
 
 func (cfg *ApiConfig) deleteChirp(w http.ResponseWriter, r *http.Request) {
-	token, errorGettingToken := auth.GetBearerToken(r.Header)
+	token, errorGettingToken := auth.GetAPIKey(r.Header)
 	chirpId := r.PathValue("chirpID")
 
 	if errorGettingToken != nil {
