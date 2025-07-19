@@ -10,6 +10,7 @@ import (
 
 	"github.com/chonlaphoom/http-go/internal/auth"
 	"github.com/chonlaphoom/http-go/internal/database"
+	"github.com/google/uuid"
 )
 
 type UserData struct {
@@ -69,6 +70,7 @@ func (cfg *ApiConfig) login(w http.ResponseWriter, r *http.Request) {
 		Email:         dbUser.Email.String,
 		Token:         token,
 		Refresh_token: t.Token,
+		IsChirpyRed:   dbUser.IsChirpyRed.Bool,
 	}
 
 	respondWithJSON(w, http.StatusOK, user)
@@ -259,4 +261,45 @@ func (cfg *ApiConfig) updateUser(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: user.CreatedAt.Time,
 		UpdatedAt: user.UpdatedAt.Time,
 	})
+}
+
+func (cfg *ApiConfig) updateChirpRed(w http.ResponseWriter, r *http.Request) {
+	type updateChirpRed struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserId string `json:"user_id"`
+		} `json:"data"`
+	}
+
+	body := updateChirpRed{}
+	decoder := json.NewDecoder(r.Body)
+	err := decoder.Decode(&body)
+	if err != nil {
+		fmt.Println("error: parsing webhook body", err)
+		respondWithJSON(w, http.StatusNoContent, nil)
+		return
+	}
+
+	if body.Event != "user.upgraded" {
+		fmt.Println("error: event not user upgrade", body.Event)
+		respondWithJSON(w, http.StatusNoContent, nil)
+		return
+	}
+
+	userIdStr, errParseUserId := uuid.Parse(body.Data.UserId)
+	if errParseUserId != nil {
+		fmt.Println("error: parsing userId")
+		respondWithJSON(w, http.StatusNoContent, nil)
+		return
+	}
+
+	_, errUpdateUserChirpRed := cfg.Db.UpdateUserChirpRedTRUE(r.Context(), userIdStr)
+
+	if errUpdateUserChirpRed != nil {
+		fmt.Println("error: update user chirp red")
+		respondWithJSON(w, http.StatusNotFound, nil)
+		return
+	}
+
+	respondWithJSON(w, http.StatusNoContent, nil)
 }

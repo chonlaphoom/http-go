@@ -15,10 +15,11 @@ import (
 )
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 type UserWToken struct {
@@ -28,6 +29,7 @@ type UserWToken struct {
 	Email         string    `json:"email"`
 	Token         string    `json:"token"`
 	Refresh_token string    `json:"refresh_token"`
+	IsChirpyRed   bool      `json:"is_chirpy_red"`
 }
 
 type ApiConfig struct {
@@ -64,6 +66,7 @@ func main() {
 	mux.HandleFunc("POST /api/chirps", apiConfig.createChirps)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.getChirps)
 	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiConfig.deleteChirp)
+	mux.HandleFunc("POST /api/polka/webhooks", apiConfig.updateChirpRed)
 	mux.HandleFunc("GET /api/chirps", apiConfig.getChirps)
 	mux.HandleFunc("GET /api/healthz", healthz)
 	mux.Handle("GET /app/", apiConfig.middlewareMetricInt(fileServerHandler))
