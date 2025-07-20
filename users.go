@@ -114,6 +114,7 @@ func (cfg *ApiConfig) createUser(w http.ResponseWriter, r *http.Request) {
 		Email:     _user.Email.String,
 	}
 
+	fmt.Println("user", user.ID, "was created.")
 	respondWithJSON(w, http.StatusCreated, user)
 }
 

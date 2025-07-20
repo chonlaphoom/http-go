@@ -110,6 +110,20 @@ func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 		responseWithError(w, http.StatusNotFound, "not found")
 	} else {
 		// get all chirps
+		author_id := r.URL.Query().Get("author_id")
+		if author_id != "" {
+			// filter by author id
+			filterdChirps := []Chirp{}
+			for _, chirp := range chirps {
+				if chirp.User_id.String() == author_id {
+					filterdChirps = append(filterdChirps, chirp)
+				}
+			}
+
+			respondWithJSON(w, http.StatusOK, filterdChirps)
+			return
+		}
+
 		respondWithJSON(w, http.StatusOK, chirps)
 	}
 }
