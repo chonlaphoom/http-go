@@ -1,3 +1,5 @@
+[![Tests](https://github.com/chonlaphoom/http-go/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/chonlaphoom/http-go/actions/workflows/ci.yml)
+
 ### deps
 - goose for migration
 - postgresql@15
