@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/chonlaphoom/http-go/internal/auth"
@@ -120,10 +121,14 @@ func (cfg *ApiConfig) getChirps(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			respondWithJSON(w, http.StatusOK, filterdChirps)
-			return
+			chirps = filterdChirps
 		}
 
+		descSort := r.URL.Query().Get("sort")
+		if descSort == "desc" {
+			// sort by desc
+			slices.Reverse(chirps)
+		}
 		respondWithJSON(w, http.StatusOK, chirps)
 	}
 }
