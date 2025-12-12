@@ -33,8 +33,5 @@
 - `POST /login` - get JWT
 - `GET/POST /chirps` - list/create chirps
 
-**Notes / Tips**
+**Notes
 - This is a learning playground. Expect small, opinionated choices and readable code.
-- Scripts live in `scripts/` for local DB helpers and quick requests.
-
-Enjoy poking around. Send a PR if you break something useful.
